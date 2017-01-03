@@ -23,15 +23,6 @@ class SimpleLDAPLogin {
 
 		if( trim($this->get_setting('directory')) == "ad" ) {
 			require_once( plugin_dir_path(__FILE__) . "/includes/adLDAP.php" );
-			$this->adldap = new adLDAP(
-				array (
-					"account_suffix"		=>	trim($this->get_setting('account_suffix')),
-					"use_tls"				=>	str_true( $this->get_setting('use_tls') ),
-					"base_dn"				=>	trim($this->get_setting('base_dn')),
-					"domain_controllers"	=>	(array)$this->get_setting('domain_controllers'),
-					"ad_port"				=>	(int)$this->get_setting('ldap_port')
-				)
-			);
 		}
 
 		add_action('admin_init', array($this, 'save_settings') );
@@ -249,6 +240,22 @@ class SimpleLDAPLogin {
 		}
 	}
 
+	function get_adldap()
+	{
+		if( ! $this->adldap ) {
+			$this->adldap = new adLDAP(
+				array (
+					"account_suffix"     => trim($this->get_setting('account_suffix')),
+					"use_tls"            => str_true( $this->get_setting('use_tls') ),
+					"base_dn"            => trim($this->get_setting('base_dn')),
+					"domain_controllers" => (array)$this->get_setting('domain_controllers'),
+					"ad_port"            => (int)$this->get_setting('ldap_port')
+				)
+			);
+		}
+		return $this->adldap;
+	}
+
 	function saved_admin_notice(){
 		echo '<div class="updated">
 		<p>Simple LDAP Login settings have been saved.</p>
@@ -364,7 +371,7 @@ class SimpleLDAPLogin {
 		$result = false;
 
 		if ( $directory == "ad" ) {
-			$result = $this->adldap->authenticate( $this->get_domain_username($username), $password );
+			$result = $this->get_adldap()->authenticate( $this->get_domain_username($username), $password );
 		} elseif ( $directory == "ol" ) {
 			$this->ldap = ldap_connect( join(' ', (array)$this->get_setting('domain_controllers')), (int)$this->get_setting('ldap_port') );
 			ldap_set_option($this->ldap, LDAP_OPT_PROTOCOL_VERSION, (int)$this->get_setting('ldap_version'));
@@ -419,7 +426,7 @@ class SimpleLDAPLogin {
 
 		if ( $directory == "ad" ) {
 			foreach ($groups as $gp) {
-				if ( $this->adldap->user_ingroup ($username, $gp ) ) {
+				if ( $this->get_adldap()->user_ingroup ($username, $gp ) ) {
 					$result = true;
 					break;
 				}
@@ -460,7 +467,7 @@ class SimpleLDAPLogin {
 		);
 
 		if ( $directory == "ad" ) {
-			$userinfo = $this->adldap->user_info($username, array("samaccountname","givenname","sn","mail"));
+			$userinfo = $this->get_adldap()->user_info($username, array("samaccountname","givenname","sn","mail"));
 			$userinfo = $userinfo[0];
 		} elseif ( $directory == "ol" ) {
 			if ( $this->ldap == null ) {return false;}
